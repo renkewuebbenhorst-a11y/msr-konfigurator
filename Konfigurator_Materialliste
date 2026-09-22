@@ -1,0 +1,82 @@
+import streamlit as st
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+import io
+
+# 1. Titel & Beschreibung
+st.title("⚡ Kabel- & Material-Konfigurator")
+st.write("Fülle die Felder aus, um automatisch eine passende Bestell-Stückliste als Excel zu generieren.")
+
+st.divider()
+
+# 2. Eingabemaske im Browser
+st.header("1. Projekt-Eingaben")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    anz_motoren = st.number_input("Anzahl Motoren", min_value=0, value=1, step=1)
+    laenge_motor = st.number_input("Durchschnittl. Kabellänge pro Motor (m)", min_value=0.0, value=15.0, step=1.0)
+
+with col2:
+    anz_sensoren = st.number_input("Anzahl Sensoren / Taster", min_value=0, value=0, step=1)
+    laenge_sensor = st.number_input("Durchschnittl. Kabellänge pro Sensor (m)", min_value=0.0, value=10.0, step=1.0)
+
+st.divider()
+
+# 3. Funktion zur Excel-Generierung im Speicher
+def erstelle_excel_stueckliste(anz_m, lg_m, anz_s, lg_s):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Stückliste"
+
+    # Tabellenkopf
+    headers = ["Artikelnummer", "Bezeichnung", "Menge", "Einheit"]
+    ws.append(headers)
+
+    # Styling Kopfzeile
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    # Berechnungs-Logik: MOTOREN
+    if anz_m > 0:
+        ws.append(["KBL-4G15", "Motorleitung 4G1.5mm²", anz_m * lg_m, "m"])
+        ws.append(["VSC-M25", "Kabelverschraubung M25 (Messing)", anz_m * 2, "Stk"])
+        ws.append(["REP-SW01", "Reparaturschalter 3-polig 5.5kW", anz_m * 1, "Stk"])
+        ws.append(["AEH-15", "Aderendhülsen 1.5mm²", anz_m * 8, "Stk"])
+
+    # Berechnungs-Logik: SENSOREN
+    if anz_s > 0:
+        ws.append(["KBL-3G075", "Sensorleitung 3G0.75mm²", anz_s * lg_s, "m"])
+        ws.append(["VSC-M12", "Kabelverschraubung M12", anz_s * 1, "Stk"])
+
+    # Spaltenbreiten automatisch anpassen
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    # In Speicher-Buffer schreiben (für Web-Download)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+# 4. Vorschau & Download-Button
+st.header("2. Stückliste generieren")
+
+if st.button("Stückliste berechnen"):
+    excel_file = erstelle_excel_stueckliste(anz_motoren, laenge_motor, anz_sensoren, laenge_sensor)
+    
+    st.success("Stückliste wurde erfolgreich generiert!")
+    
+    st.download_button(
+        label="📥 Excel-Datei herunterladen",
+        data=excel_file,
+        file_name="Stueckliste_Bestellung.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
