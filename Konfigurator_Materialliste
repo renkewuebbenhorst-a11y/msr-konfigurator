@@ -2,9 +2,6 @@ import streamlit as st
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 import io
-streamlit
-openpyxl
-pandas
 
 # 1. Titel & Beschreibung
 st.title("⚡ Kabel- & Material-Konfigurator")
